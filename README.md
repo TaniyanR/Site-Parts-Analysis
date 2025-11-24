@@ -1,5 +1,3 @@
-## 🧾 新しい共通パーツ用 README（コピーしてOK）
-
 ````md
 # THK Analytics Core（ヘッドレスアクセス解析エンジン）
 
