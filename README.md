@@ -1,267 +1,162 @@
-````md
-# THK Analytics Core（ヘッドレスアクセス解析エンジン）
+# THK Analytics - thk.kanzae.net
 
-このプロジェクトは、THK Analytics 1.2.4 をベースにして、
+## THK Analytics とは
 
-- ログイン機能
-- 管理画面（グラフなどのUI）
-- サイトの枠・レイアウト・テーマ
-- 画面上のクレジット表示
+  高機能・高速・低メモリ・レスポンシブデザインな  
+  PHP + MySQL で動作するサーバーインストール型 Web アクセス解析ツールです。
 
-をすべて省き、**純粋なアクセス解析エンジン部分だけ**を取り出した
-「ヘッドレスアクセス解析ライブラリ」です。
+## サーバー動作環境
 
-## 🎯 目的
+  - OS  
+    Linux、FreeBSD、Windows (Windows は XAMPP では動作確認済み、OSX は持ってないので分からない)
 
-- PHPで作った別のツール・サイトから
-  - JavaScriptタグ
-  - PHP関数呼び出し  
-  で共通のアクセスログを記録できるようにする
-- 管理画面やログイン認証は持たず、  
-  **「ログを受け取ってデータベースに保存する」ことだけに特化** する
-- 後から好きな UI / ダッシュボードを自作できるようにする
+  - Webサーバー  
+    Apache (Apache でしか動作検証してません)
 
-> ⚠️ 注意（ライセンス）
-> - ソースコード内の著作権表記・ライセンス表記（ヘッダコメント）は **GPL的に残す必要があります**。
-> - 画面に表示されるロゴやフッターのクレジットは、この Core ではそもそも UI を持たないため出ません。
+  - PHP  
+    バージョン 5.3 以上
 
----
+  - MySQL  
+    バージョン 4.2 以上 (5.0以上推奨、5.6以上だとさらに高速)
 
-## 🏗 構成（ファイル/ディレクトリ）
+## クライアント環境
 
-Core 版では、THK Analytics 本体から以下の部分だけを利用します。
+  - OS  
+    Windows、OSX、Linux、FreeBSD、iOS、Android 等
 
-```text
-_core/                         … 解析エンジン本体
-  system/ThkInclude.php        … 各種パス定義・共通読み込み
-  application/config/          … 各種設定・一覧
-  application/libs/Track.php   … 解析処理の中枢（Trackクラス）
-  application/models/Log.php   … ログ保存ロジック
-  application/models/Site.php  … サイト情報
-  （その他、Track/Logが必要とするヘルパー/モデル）
+  - ブラウザ  
+    Javascript、Cookie が使用できるブラウザ  
+    (IE、Firefox、Chrome、Chromium、Opera、Sleipnir、Konqueror、Dolphin、Android標準ブラウザ 等で検証済み)
 
-thk-core/                      … Web から叩く入口だけを残したディレクトリ
-  initialize.php               … Coreの初期化
-  script.php                   … JavaScriptコード配信
-  track.php                    … JSからのアクセス記録
-  phptrack.php                 … PHPからのアクセス記録（_thkTrack）
-  setting/
-    path.php                   … _core へのパス設定
-    database.php               … DB接続情報
-    siteurl.php                … サイトURL設定（必要に応じて）
-````
+## スマートフォン(iPhone、Android 等)の場合
 
-元の THK Analytics にあった以下のものは **Core では使いません**：
+  - レスポンシブデザインのため、スマホ等でも閲覧できます。
+  - 横向き画面での閲覧を推奨。  
+    (縦画面だとグラフ等がつぶれて、見にくいです。)
+  - 閲覧中に画面サイズを変更した場合、グラフ等が画面外にはみ出すことがありますが、  
+    再読み込みすれば、正常に閲覧できます。
 
-* `_core/application/controllers/*`（Admin / Login / Research / Install など）
-* `_core/application/views/*`
-* `thk/view/*`
-* `thk/index.php`（管理画面のエントリ）
-* ログイン画面・管理画面向けの JS / CSS 各種
+## インストール
 
----
+  1. THK Analytics 用に MySQL のデータベースを準備しておく (文字コード UTF-8)。
 
-## ⚙ インストール / セットアップ
+  2. ダウンロードしたファイルを解凍してサーバーにアップロードする。
+     (アップロードしてからサーバーで解凍してもいい。て言うかむしろ、そっちの方がはやい)
 
-### 1. データベース作成
+  3. ファイル構成  
+    ├  _core  
+    ├  _data  
+    ├  thk (名前変更可)  
 
-THK Analytics 用の MySQL データベースを作成し、
-元パッケージ付属の SQL（テーブル作成スクリプト）を流します。
+  4. インストール画面へのアクセス  
+    - ブラウザで「http://Webサーバー/thk (名前変更可)/view/」にアクセス。
+    - 画面に従い、必要な情報を入力していけばインストール完了。
 
-* THK Analytics オリジナルのテーブル構成（`log_*` など）をそのまま利用します。
-* 文字コードは `utf8` / `utf8mb4` を推奨します。
+  5. 解析用コードの埋め込み  
+    - アクセス解析をしたい Webサイトに発行された解析用コードを貼る。
 
-### 2. ファイルを配置
+  6. GeoLiteCity.dat ファイルの準備 (必須ではないが推奨)
+    - 詳細は後述。
 
-1. `_core/` ディレクトリをサーバーにアップロードします。
-2. `thk-core/` ディレクトリとして、以下のファイルを置きます（元の `thk/` から必要なものだけコピー）:
 
-   * `initialize.php`
-   * `script.php`
-   * `track.php`
-   * `phptrack.php`
-   * `setting/` ディレクトリとその中の `path.php`, `database.php`, `siteurl.php` など
+## 複数サイトの解析
+  - 以下のようにファイルを設置してください。  
+    ├  _core  
+    ├  _data  
+    ├  thk (名前変更可)  
+    ├  site2 (thk のコピー、名前変更可)  
+    ├  site3 (thk のコピー、名前変更可)  
 
-> ※ 元の `thk/` ディレクトリから **管理画面用の `view/` や `index.php` などはコピーしません。**
-> 解析の入口だけを残します。
+  - コピーしたディレクトリの setting の中身は .htaccess のみにしてください。  
+    (THK Analytics は setting ディレクトリ内にファイルを作成するため、コピーする場合は .htaccess 以外は削除してください。)
+  - 解析サイトごとにデータベースを用意するか、  
+    同じデータベースを使用する場合は、テーブルプレフィクスを解析サイトごとに変更してください。
 
-### 3. 設定ファイルの調整
+## GeoLiteCity.dat ファイルのアップロード
+  THK Analytics ではドメイン名で国名と都道府県名を判別しますが、  
+  GeoLiteCity.dat があれば、ドメイン名で判別できなかった国名や都道府県名を判別できることがあります。
 
-`thk-core/setting/` 配下のファイルを編集します。
+  1. [Maxmind](http://dev.maxmind.com/geoip/legacy/geolite/ "Maxmind") の Webサイトから GeoLiteCity(Binary) をダウンロードしてください。
 
-* `path.php`
-  `_core/` ディレクトリまでのパスを設定します（元の `CORE_PATH` と同じ考え方）。
+  2. ファイルを解凍して、GeoLiteCity.dat を「_data」ディレクトリにアップロードしてください。
 
-* `database.php`
-  データベースの接続情報（ホスト名 / DB名 / ユーザー / パスワードなど）を設定します。
+## アップグレード
 
-* `siteurl.php`（必要な場合）
-  サイトのベースURLを設定します。
+  1. 本体とDBアップグレード用のファイルをダウンロード。
 
----
+  2. ダウンロードした本体とDBアップグレード用ファイルを解凍
+　　 (特に指定が無い限り _core フォルダの上書きだけで OK です)。
 
-## 📡 トラッキングの方法
+  3. 解凍した本体のファイルを古いファイルに上書きする。
 
-THK Analytics Core は、**2種類の方法でアクセスを記録**できます。
+  4. DBアップデート用ファイル（_upgrade）を以下のように設置。
+    ├ _core  
+    ├ _data  
+    ├ thk (名前変更可)  
+    ├ _upgrade  
 
-### 1. JavaScript タグによる解析
+  5. ブラウザで「http://(THK Analytics までのパス)/thk (名前変更可)/view/」にアクセス。
 
-JavaScript を使ったリッチな解析（クリック・画面サイズなど）を行う方法です。
+  6. 画面の指示に従い、データベースをアップグレードする。
+　　 複数サイトの解析を行っている場合は、解析サイトごとにデータベースをアップグレードしてください  
+    （上記「名前変更可」の部分を解析サイトごとにブラウザでアクセスする）。
 
-#### 1-1. JSコードの読み込み
+  7. _upgrade をディレクトリごと削除。
 
-解析したいページの `<head>` または `<body>` 終了前に、次のようなコードを追加します。
+  8. 以上でアップグレードは完了です。
 
-```html
-<script src="https://your-domain.example.com/thk-core/script.php"></script>
-```
+## ログイン用ID・パスワードを忘れた場合
+  ログイン用のID・パスワードを忘れてしまった時は、以下の操作でシステムの再設定を行ってください。
 
-※ `script.php` は、元の THK Analytics と同様に、必要な JavaScript を動的に生成します。
-　JS側で `track.php` に対してアクセス情報を送信します。
+  1. thk/setting/ ディレクトリの権限(パーミッション) を 755 に変更。
 
-#### 1-2. 取得できる情報（オリジナル準拠）
+  2. thk/setting/siteurl.php を削除。
 
-* ページURL
-* リファラー（リンク元）
-* ホスト名 / IP アドレス
-* OS / ブラウザ / デバイス種別
-* JavaScript / Cookie の ON/OFF
-* 画面解像度 / 色数
-* クリック / ボタンクリック / 各種イベント
-  （元の THK Analytics の `Track` クラスが持っている機能に準拠）
+  3. ブラウザで「http://(THK Analytics までのパス)/thk (名前変更可)/view/」にアクセス。
 
-### 2. PHP 関数呼び出しによる解析（JavaScriptなし）
+## MySQL データベースの設定を変更したい場合
+  データベースの設定を変更する場合は、以下の操作でシステムの再設定を行ってください。
 
-PHP から直接 `_thkTrack()` を呼び出すことで、
-JavaScript を使わずにアクセスを記録する方法です。
+  1. thk/setting/ ディレクトリの権限(パーミッション) を 755 に変更。
 
-#### 2-1. 共通読み込み
+  2. thk/setting/database.php を削除。
 
-解析したい PHP ファイル内で、`phptrack.php` を読み込みます。
+  3. ブラウザで「http://Webサーバー/thk (名前変更可)/view/」にアクセス。
 
-```php
-<?php
-require_once '/path/to/thk-core/phptrack.php';
-```
+## 実装に関して
+  THK Analytics では、以下のライブラリ等を利用しています。
 
-#### 2-2. ページ表示時に記録する
+  - ベース部分
+    - [Research Artisan Lite](http://lite.research-artisan.net/main/ "Research Artisan Lite")
 
-ページタイトル等を渡してアクセスを記録します。
+  - 折れ線グラフ、積み上げグラフ、一部の円グラフの描画
+    - [ccchart](http://ccchart.com/ "ccchart")
 
-```php
-<?php
-require_once '/path/to/thk-core/phptrack.php';
+  - 円グラフの描画
+    - [JavaScript Library - HTML5.JP](http://www.html5.jp/library/graph_circle.html "JavaScript Library - HTML5.JP")
 
-$title = 'トップページ';
-_thkTrack($title);
-```
+  - ユーザーエージェントの解析 Level.1
+    - [ua-parser PHP Library](https://github.com/ua-parser/uap-php "ua-parser PHP Library")
 
-### 2-3. WordPress テンプレートなどでの例
+  - ユーザーエージェントの解析 Level.2 (ua-parser で解析できなかった部分)
+    - [Woothee PHP](https://github.com/woothee/woothee "Woothee PHP")
 
-```php
-<?php
-require_once get_template_directory() . '/thk-core/phptrack.php';
+  - CSS ファイルの最適化(圧縮)
+    - [YUI CSS compressor](https://github.com/tubalmartin/YUI-CSS-compressor-PHP-port "YUI CSS compressor")
 
-// タイトルを WordPress から取得して渡す
-_thkTrack( wp_title('-', false, 'right') );
-```
+  - Javascript ファイルの最適化(圧縮)
+    - [JSMin PHP](https://github.com/rgrove/jsmin-php "JSMin PHP")
 
-> ⚠️ PHPトラッキングのみを使う場合は、JavaScriptタグ（`script.php`）との **併用はしない** 想定です（オリジナルの仕様準拠）。
+## Licence
+  - [GPL v2 or later](http://www.gnu.org/licenses/gpl-2.0.html "GPL v2 or later")
 
----
+## Contact
 
-## 🔩 内部構造（どのコードが解析しているか）
+  - 公式サイト: [THK Analytics](http://thk.kanzae.net/analytics/ "THK Analytics")
 
-Core 版で主に使うクラスは以下の通りです。
+  - 開発者ブログ: [Thought is free](http://thk.kanzae.net/ "Thought is free")
 
-* `_core/application/libs/Track.php`
+  - Twitter: LunaNuko
 
-  * `Track::doScript()` … `script.php` から呼び出され、クライアント側 JS を出力
-  * `Track::doTrack()` … `track.php` から呼び出され、アクセス情報を記録
-  * `Track::doPhpTrack($title)` … `_thkTrack()` から呼び出され、PHPからのアクセスを記録
-
-* `_core/application/models/Log.php`
-
-  * 実際に各種テーブルへログを書き込む処理を担当
-
-* `_core/system/ThkInclude.php`
-
-  * 設定ファイル / モデル / ライブラリの読み込み
-  * パス定義（`THK_CORE_DIR`, `THK_LIBS_DIR`, `THK_MODEL_DIR` など）
-
-この Core では、**ログインや管理画面に関するコントローラ・ビューには一切触れません。**
-今後必要に応じて、別プロジェクトとして可視化用UIを作成できます。
-
----
-
-## 🧪 他のPHPツールからの使い方イメージ
-
-あなたの側の PHP ツールでは、次のように使います。
-
-### 例1：単純なPHPアプリに JS 解析を入れる
-
-```html
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>サンプルアプリ</title>
-  <script src="https://analytics.example.com/thk-core/script.php"></script>
-</head>
-<body>
-  ...
-</body>
-</html>
-```
-
-### 例2：PHPから直接トラッキング（JSなし）
-
-```php
-<?php
-require_once '/var/www/analytics/thk-core/phptrack.php';
-
-_thkTrack('マイツールのダッシュボード画面');
-```
-
----
-
-## 🚧 今後の拡張のためのメモ
-
-* **この Core プロジェクトは「記録専用」**です。
-* 集計・グラフ表示・管理者ログインなどは別プロジェクトとして実装してください。
-* ログテーブルに対しては、任意の BI ツール / 自作ダッシュボード / SQL などで参照できます。
-
-将来的なアイデア：
-
-* Laravel / Slim 等で別途「閲覧専用API + フロントエンド」を作る
-* BigQueryや別DBへのエクスポートバッチを追加する
-* event ベースでのトラッキングAPI（`trackEvent()`相当）を薄くラップする
-
----
-
-````
-
----
-
-## 🧠 Copilot に作業させるときの一言テンプレ
-
-GitHub上で作業するときは、例えばこんな感じで Copilot に指示すればOKです（そのままコピペで使えます）👇
-
-```text
-このリポジトリに入っている THK Analytics 1.2.4 から、
-ログイン機能や管理画面、ビューなどを取り除いて、
-純粋なアクセス解析エンジン部分だけを「thk-core」というディレクトリに整理したいです。
-
-やりたいこと：
-- _core/application/libs/Track.php と、Trackが依存しているモデル/ヘルパー/設定だけを使う
-- thk/initialize.php, thk/track.php, thk/script.php, thk/phptrack.php と setting/ を
-  新しい thk-core/ ディレクトリに移し、パス等を調整する
-- _core/application/controllers や _core/application/views、thk/view など
-  ログイン・管理画面関連のコードには依存しない構成にする
-
-この README.md に書かれている方針を前提に、
-必要なファイルをコピー・修正して「THK Analytics Core」として動くようにしてください。
-````
-
-
-みたいな拡張もしたくなったら、それ前提の v2 用 README も一緒に作ります！
+## Copyright
+  Copyright (C) 2015 Thought is free.
